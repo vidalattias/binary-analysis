@@ -1,4 +1,5 @@
 
+
 def print_array(x):
     ret = ""
     for i in x:
@@ -8,7 +9,7 @@ def print_array(x):
         ret += val + ' '
     return ret[0:-1]
 
-def elf_class(name, value):
+def elf_header_constants(name, value):
     if name == "EI_CLASS":
         if value == 0:
             return "Class None"
@@ -108,9 +109,116 @@ def elf_class(name, value):
             return "EV_CURRENT (Current version) ("+hex(value)+")"
     return "ERROR\t" + str(name) + "\t" + str(value)
 
+
+def elf_section_header_constants(name, value):
+    if name == "sh_type":
+        if value == 0:
+            return "SHT_NULL"
+        if value == 1:
+            return "SHT_PROGBITS"
+        if value == 2:
+            return "SHT_SYMTAB"
+        if value == 3:
+            return "SHT_STRTAB"
+        if value == 4:
+            return "SHT_RELA"
+        if value == 5:
+            return "SHT_HASH"
+        if value == 6:
+            return "SHT_DYNAMIC"
+        if value == 7:
+            return "SHT_NOTE"
+        if value == 8:
+            return "SHT_NOBITS"
+        if value == 9:
+            return "SHT_REL"
+        if value == 10:
+            return "SHT_SHLIB"
+        if value == 11:
+            return "SHT_DYNSYM"
+        if value == 14:
+            return "SHT_INIT_ARRAY"
+        if value == 15:
+            return "SHT_FINI_ARRAY"
+        if value == 16:
+            return "SHT_PREINIT_ARRAY"
+        if value == 17:
+            return "SHT_GROUP"
+        if value == 18:
+            return "SHT_SYMTAB_SHNDX"
+        if value == 0x60000000:
+            return "SHT_LOOS"
+        if value == 0x6fffffff:
+            return "SHT_HIOS"
+        if value == 0x70000000:
+            return "SHT_LOPROC"
+        if value == 0x7fffffff:
+            return "SHT_HIPROC"
+        if value == 0x80000000:
+            return "SHT_LOUSER"
+        if value == 0xffffffff:
+            return "SHT_HIUSER"
+        else:
+            return "Incorrect ("+hex(value)+")"
+    if name == "sh_flags":
+        ret = ""
+        if value & 0x1:
+            ret += "W"
+        if value & 0x2:
+            ret += "A"
+        if value & 0x4:
+            ret += "X"
+        if value & 0x10:
+            ret += "M"
+        if value & 0x20:
+            ret += "S"
+        if value & 0x40:
+            ret += "I"
+        if value & 0x80:
+            ret += "L"
+        if value & 0x100:
+            ret += "O"
+        if value & 0x200:
+            ret += "G"
+        if value & 0x00:
+            ret += "T"
+        if value & 0x0ff00000:
+            ret += "-MASKOS-"
+        if value & 0xf0000000:
+            ret += "-MASKPROC-"
+        return ret
+    return "ERROR\t" + str(name) + "\t" + str(value)
+
+
+def read_section_header(content):
+    ret = {
+    "sh_name" : int.from_bytes(content[0:3], endianness),
+    "sh_type" : int.from_bytes(content[4:7], endianness),
+    "sh_flags" : int.from_bytes(content[8:15], endianness),
+    "sh_addr" : int.from_bytes(content[16:23], endianness),
+    "sh_offset" : int.from_bytes(content[24:31], endianness),
+    "sh_size" : int.from_bytes(content[32:39], endianness),
+    "sh_link" : int.from_bytes(content[40:43], endianness),
+    "sh_info" : int.from_bytes(content[44:47], endianness),
+    "sh_addralign" : int.from_bytes(content[48:55], endianness),
+    "sh_entsize" : int.from_bytes(content[56:63], endianness),
+    }
+
+    return ret
+
+def print_section_header(sec):
+    print("\tType:", elf_section_header_constants("sh_type", sec["sh_type"]))
+    print()
+
+def get_section_name(sec_content, index):
+    ret = bytearray(b'')
+    i = 0
+    while(sec_content[index+i] != 0):
+        ret.append(sec_content[index+i])
+        i+=1
+    return str(ret, 'ascii')
+
 contents = open("a.out", "br").read()
-
-
 
 elf64_ehdr = contents[0:63]
 
@@ -142,19 +250,18 @@ e_shnum = int.from_bytes(elf64_ehdr[60:61], endianness)
 e_shstrndx = int.from_bytes(elf64_ehdr[62:63], endianness)
 
 
-
 print("ELF Header:")
 print("\tMagic:"+print_array(e_indent))
-print("\tClass: " + elf_class("EI_CLASS", EI_CLASS))
-print("\tData: " + elf_class("EI_DATA", EI_DATA))
-print("\tVersion: " + elf_class("EI_VERSION", EI_VERSION))
-print("\tABI: " + elf_class("EI_OSABI", EI_OSABI))
+print("\tClass: " + elf_header_constants("EI_CLASS", EI_CLASS))
+print("\tData: " + elf_header_constants("EI_DATA", EI_DATA))
+print("\tVersion: " + elf_header_constants("EI_VERSION", EI_VERSION))
+print("\tABI: " + elf_header_constants("EI_OSABI", EI_OSABI))
 print("\tABI Version: " + str(EI_ABIVERSION))
 print("\tEI_PAD: " + print_array(EI_PAD))
 print("")
-print("\tType: " + elf_class("e_type", e_type))
-print("\tMachine: " + elf_class("e_machine", e_machine)) #complete with https://refspecs.linuxfoundation.org/elf/gabi4+/ch4.eheader.html
-print("\tVersion: " + elf_class("e_version", e_version))
+print("\tType: " + elf_header_constants("e_type", e_type))
+print("\tMachine: " + elf_header_constants("e_machine", e_machine)) #complete with https://refspecs.linuxfoundation.org/elf/gabi4+/ch4.eheader.html
+print("\tVersion: " + elf_header_constants("e_version", e_version))
 print("\tEntry point: " + hex(e_entry))
 print("\tFlags:", e_shstrndx)
 print("\tFlags:", e_flags)
@@ -164,3 +271,32 @@ print("\tSize of this header:", e_ehsize, "(bytes)")
 print("\tProgram Headers:", e_phnum, "entries of size", e_phentsize, "total of", e_phnum*e_phentsize, "bytes")
 print("\tSection Headers:", e_shnum, "entries of size", e_shentsize, "total of", e_shnum*e_shentsize, "bytes")
 print("\tSection header string table index:", e_shstrndx)
+print()
+
+
+sec_names_header_content = contents[e_shoff+e_shstrndx*e_shentsize:e_shoff+e_shentsize*(e_shstrndx+1)]
+sec_header = read_section_header(sec_names_header_content)
+
+sec_names_content = contents[sec_header['sh_offset']:sec_header['sh_offset']+sec_header['sh_size']]
+
+names_bytes = sec_names_content.split(b'\0')
+names = [str(x, 'utf-8') for x in names_bytes]
+
+
+for i in range(0, e_shnum):
+    print(str(i) + ":" + hex(e_shoff+i*e_shentsize))
+    #print(print_array(contents[e_shoff+i*e_shentsize:e_shoff+e_shentsize*(i+1)]))
+    sec = read_section_header(contents[e_shoff+i*e_shentsize:e_shoff+e_shentsize*(i+1)])
+    print("\tName:", get_section_name(sec_names_content, sec["sh_name"]))
+    print("\tType:", elf_section_header_constants("sh_type", sec["sh_type"]))
+    print("\tFlags:", elf_section_header_constants("sh_flags", sec["sh_flags"]))
+    print("\tAddress:", hex(sec["sh_addr"]))
+    print("\tOffset:", hex(sec["sh_offset"]))
+    print("\tSize:", hex(sec["sh_size"]), '(bytes)')
+    print("\tLink:", sec["sh_link"])
+    print("\tInfo", sec["sh_info"])
+    print("\tAlign", sec["sh_addralign"])
+    print("\tEntSize:", sec["sh_entsize"])
+
+
+    print()
